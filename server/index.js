@@ -8,8 +8,12 @@ import candidatesRouter from './routes/candidates.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '.env') })
 
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+
 const app = express()
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }))
+app.use(cors({ origin: allowedOrigins }))
 app.use(express.json())
 
 app.get('/api/health', (req, res) => res.json({ ok: true }))

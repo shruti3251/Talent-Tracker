@@ -103,6 +103,54 @@ npm run preview  # preview the production build locally
 npm run lint      # oxlint
 ```
 
+## Deploying to production
+
+This app is set up to deploy across three free-tier services, with `velocityledger.in` pointing at them:
+
+- **Database**: Azure SQL Database (free tier) — a hosted, wire-compatible SQL Server, so the schema and `mssql` driver code need no changes, just new connection details.
+- **Backend**: Render (free tier) — deploys `server/` from this GitHub repo. Free tier spins down after inactivity, so the first request after idle takes ~30s.
+- **Frontend**: Vercel — deploys the Vite build from this GitHub repo.
+
+### 1. Azure SQL Database
+
+In the [Azure Portal](https://portal.azure.com): **Create a resource → SQL Database**. Choose the free offer, create a new logical server (note the admin login/password you set — this is `DB_USER`/`DB_PASSWORD`), and name the database `TalentFlow`.
+
+Once it's provisioned:
+- **Networking**: under the server's "Networking" blade, add a firewall rule allowing `0.0.0.0`–`255.255.255.255` (Render's free tier has no static outbound IP, so there's no narrower range to allow — this means the SQL Server accepts connections from any IP, protected only by the login password. Fine for a low-stakes internal tool; revisit if that's ever not true).
+- Run [`server/db/schema.sql`](server/db/schema.sql) against it (via the Azure Portal's built-in Query Editor, SSMS, or `sqlcmd -S <server>.database.windows.net -U <admin> -P "<password>" -d TalentFlow -i server/db/schema.sql`).
+- Your connection details: `DB_SERVER=<server-name>.database.windows.net`, `DB_PORT=1433`, `DB_NAME=TalentFlow`, `DB_USER`/`DB_PASSWORD` as set above.
+
+### 2. Push to GitHub
+
+```bash
+git remote add origin <your-repo-url>
+git push -u origin master
+```
+
+### 3. Render (backend)
+
+New Web Service → connect the GitHub repo → Render should pick up [`render.yaml`](render.yaml) automatically. Fill in the env vars it leaves blank (`sync: false` in the blueprint): `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (from step 1), `CLIENT_ORIGIN` (`https://velocityledger.in,https://www.velocityledger.in`), and `PUBLIC_API_URL` (`https://api.velocityledger.in`, once the custom domain below is attached — until then, use the `*.onrender.com` URL Render assigns).
+
+Once deployed, add the custom domain `api.velocityledger.in` under the service's Settings → Custom Domains — Render will show you the DNS target to use in step 5.
+
+### 4. Vercel (frontend)
+
+Import the GitHub repo — Vercel should detect Vite via [`vercel.json`](vercel.json) automatically. Add one environment variable: `VITE_API_BASE_URL=https://api.velocityledger.in`.
+
+Once deployed, add `velocityledger.in` (and optionally `www.velocityledger.in`) under the project's Settings → Domains — Vercel will show you the DNS target to use in step 5.
+
+### 5. GoDaddy DNS
+
+In GoDaddy's DNS management for `velocityledger.in`, add the records Render and Vercel gave you in steps 3–4 — typically:
+
+| Type  | Name  | Value                        |
+|-------|-------|-------------------------------|
+| A     | @     | Vercel's apex IP (e.g. `76.76.21.21`) |
+| CNAME | www   | `cname.vercel-dns.com`         |
+| CNAME | api   | the `.onrender.com` hostname Render gives you |
+
+DNS changes can take anywhere from minutes to a few hours to propagate. Both Render and Vercel issue HTTPS certificates automatically once they see the DNS pointed at them.
+
 ## Project structure
 
 ```
