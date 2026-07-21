@@ -33,7 +33,7 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
   const [moveMenuOpen, setMoveMenuOpen] = useState(false)
 
   const status = STATUS_MAP[candidate.status]
-  const showDetails = !compact && expanded
+  const showDetails = expanded
 
   function closeMenus() {
     setMenuOpen(false)
@@ -52,20 +52,18 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
           }`}
         >
           <div className="flex items-center gap-1 px-3 py-2.5">
-            {!compact && (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="flex size-5 shrink-0 items-center justify-center text-slate-400 hover:text-slate-600"
-                aria-label={expanded ? 'Collapse' : 'Expand'}
-              >
-                {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="flex size-5 shrink-0 items-center justify-center text-slate-400 hover:text-slate-600"
+              aria-label={expanded ? 'Collapse' : 'Expand'}
+            >
+              {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+            </button>
 
             <button
               type="button"
-              onClick={() => !compact && setExpanded((v) => !v)}
+              onClick={() => setExpanded((v) => !v)}
               className="flex-1 truncate text-left text-sm font-bold uppercase tracking-wide text-slate-800"
             >
               {candidate.name}
