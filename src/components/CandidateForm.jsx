@@ -121,7 +121,13 @@ export default function CandidateForm({ verb, initialValues, submitLabel, onSubm
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.name.trim() || !form.current_ctc || !form.expected_ctc || !form.experience_yrs) {
+    const isBlank = (v) => v === '' || v === null || v === undefined
+    if (
+      !form.name.trim() ||
+      isBlank(form.current_ctc) ||
+      isBlank(form.expected_ctc) ||
+      isBlank(form.experience_yrs)
+    ) {
       setError('Please fill in all required fields.')
       return
     }
