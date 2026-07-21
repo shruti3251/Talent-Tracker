@@ -29,14 +29,11 @@ export default function TopBar({
             Total: {totalCount}
           </span>
 
-          <span
-            className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700"
-            title={isLive ? 'Auto-refreshing every few seconds' : 'Cannot reach the API server'}
-          >
+          <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
             <span
-              className={`size-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`}
+              className={`size-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}
             />
-            {isLive ? 'Auto-refresh' : 'Offline'}
+            {isLive ? 'Live' : 'Connecting…'}
           </span>
 
           <div className="flex items-center rounded-lg border border-slate-200 p-0.5">

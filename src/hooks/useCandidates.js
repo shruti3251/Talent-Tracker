@@ -1,51 +1,81 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  createCandidate,
-  deleteCandidate as apiDeleteCandidate,
-  fetchCandidates,
-  updateCandidate as apiUpdateCandidate,
-  uploadCandidateResume,
-} from '../lib/api'
+import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
 import { DEFAULT_STATUS } from '../lib/statuses'
-
-const POLL_INTERVAL_MS = 4000
 
 export function useCandidates() {
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isLive, setIsLive] = useState(false)
-  const pollRef = useRef(null)
 
-  const refresh = useCallback(async ({ silent } = {}) => {
-    try {
-      const data = await fetchCandidates()
-      setCandidates(data)
-      setIsLive(true)
-      setError(null)
-    } catch (err) {
-      setIsLive(false)
-      if (!silent) setError(err.message)
-    } finally {
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      const { data, error: fetchError } = await supabase
+        .from('candidates')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (cancelled) return
+
+      if (fetchError) {
+        setError(fetchError.message)
+      } else {
+        setCandidates(data ?? [])
+        setError(null)
+      }
       setLoading(false)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('candidates-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'candidates' },
+        (payload) => {
+          setCandidates((prev) => {
+            if (payload.eventType === 'INSERT') {
+              if (prev.some((c) => c.id === payload.new.id)) return prev
+              return [payload.new, ...prev]
+            }
+            if (payload.eventType === 'UPDATE') {
+              return prev.map((c) => (c.id === payload.new.id ? payload.new : c))
+            }
+            if (payload.eventType === 'DELETE') {
+              return prev.filter((c) => c.id !== payload.old.id)
+            }
+            return prev
+          })
+        },
+      )
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED')
+      })
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
     }
   }, [])
 
-  useEffect(() => {
-    refresh()
-    pollRef.current = setInterval(() => refresh({ silent: true }), POLL_INTERVAL_MS)
-    return () => clearInterval(pollRef.current)
-  }, [refresh])
-
   const addCandidate = useCallback(async (fields) => {
-    try {
-      const created = await createCandidate({ ...fields, status: DEFAULT_STATUS })
-      setCandidates((prev) => [created, ...prev])
-      return created
-    } catch (err) {
-      setError(err.message)
-      throw err
+    const { data, error: insertError } = await supabase
+      .from('candidates')
+      .insert([{ ...fields, status: DEFAULT_STATUS }])
+      .select()
+      .single()
+
+    if (insertError) {
+      setError(insertError.message)
+      throw insertError
     }
+
+    setCandidates((prev) => (prev.some((c) => c.id === data.id) ? prev : [data, ...prev]))
+    return data
   }, [])
 
   const updateCandidate = useCallback(async (id, fields) => {
@@ -58,34 +88,29 @@ export function useCandidates() {
       }),
     )
 
-    try {
-      const updated = await apiUpdateCandidate(id, fields)
-      setCandidates((prev) => prev.map((c) => (c.id === id ? updated : c)))
-      return updated
-    } catch (err) {
-      setError(err.message)
+    const { data, error: updateError } = await supabase
+      .from('candidates')
+      .update(fields)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) {
+      setError(updateError.message)
       if (previous) {
         setCandidates((prev) => prev.map((c) => (c.id === id ? previous : c)))
       }
-      throw err
+      throw updateError
     }
+
+    setCandidates((prev) => prev.map((c) => (c.id === id ? data : c)))
+    return data
   }, [])
 
   const moveCandidate = useCallback(
     (id, status) => updateCandidate(id, { status }),
     [updateCandidate],
   )
-
-  const uploadResume = useCallback(async (id, file) => {
-    try {
-      const updated = await uploadCandidateResume(id, file)
-      setCandidates((prev) => prev.map((c) => (c.id === id ? updated : c)))
-      return updated
-    } catch (err) {
-      setError(err.message)
-      throw err
-    }
-  }, [])
 
   const deleteCandidate = useCallback(async (id) => {
     let previous
@@ -96,10 +121,10 @@ export function useCandidates() {
       return prev.filter((c) => c.id !== id)
     })
 
-    try {
-      await apiDeleteCandidate(id)
-    } catch (err) {
-      setError(err.message)
+    const { error: deleteError } = await supabase.from('candidates').delete().eq('id', id)
+
+    if (deleteError) {
+      setError(deleteError.message)
       if (previous) {
         setCandidates((prev) => {
           const next = [...prev]
@@ -107,7 +132,7 @@ export function useCandidates() {
           return next
         })
       }
-      throw err
+      throw deleteError
     }
   }, [])
 
@@ -120,7 +145,6 @@ export function useCandidates() {
     addCandidate,
     updateCandidate,
     moveCandidate,
-    uploadResume,
     deleteCandidate,
   }
 }

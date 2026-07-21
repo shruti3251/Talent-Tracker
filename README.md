@@ -1,99 +1,62 @@
 # TalentFlow — HR Candidate Tracker
 
-A Kanban-style board for tracking job candidates through a hiring pipeline: **Shortlisted → Interview Scheduled → Interviewed → Selected / Rejected**. Built with React + Vite, Tailwind CSS, a small Express API, and Microsoft SQL Server — drag-and-drop via `@hello-pangea/dnd`.
+A Kanban-style board for tracking job candidates through a hiring pipeline: **Shortlisted → Interview Scheduled → Interviewed → Selected / Rejected**. Built with React + Vite, Tailwind CSS, Supabase (Postgres + Realtime + Storage), and drag-and-drop via `@hello-pangea/dnd`.
 
 ## Stack
 
-- React 18/19 + Vite (frontend)
+- React 18/19 + Vite
 - Tailwind CSS v4
-- Express + `mssql` (backend API, talks to SQL Server)
-- Microsoft SQL Server (data)
-- `multer` for resume PDF uploads (stored as a blob in SQL Server, streamed back by Express — see below)
+- `@supabase/supabase-js` for data, realtime subscriptions, and resume file storage
 - `@hello-pangea/dnd` for drag-and-drop between columns
-
-## Why there's a separate server
-
-SQL Server has no browser client — unlike the earlier Supabase version, the React app can't talk to the database directly. `server/` is a small Express API that the frontend calls over HTTP; it's the only thing that talks to SQL Server. Live updates are done by polling (`GET /api/candidates` every ~4s) rather than a push subscription, since SQL Server doesn't have a built-in realtime feed the way Supabase does — the "Auto-refresh" badge in the top bar reflects this instead of an instant "Live" state.
 
 ## Security note
 
-Same tradeoff as before: there's no login screen, so the Express API has no auth of its own — anything that can reach `http://localhost:3001` has full read/write access to candidate data. Fine for local/internal use; add an auth layer (e.g. a shared API key header, or real user auth) before exposing this beyond your machine.
+There is no login screen in this app — it talks to Supabase using only the public **anon** key. The RLS policies in the migrations grant full CRUD to the `anon` role, so **anyone who has the anon key (i.e. anyone who can load the deployed app) can read and write all candidate data**. This is fine for an internal tool behind a private URL, but if you need real access control, add Supabase Auth (email/password or SSO) and change the policies from `to anon` to `to authenticated`.
 
-## 1. Prerequisites
+## 1. Create a Supabase project
 
-- Node.js
-- SQL Server (Express edition is fine) with:
-  - **TCP/IP protocol enabled** on a known port (this project assumes `localhost:1433`) — SQL Server Express ships with TCP/IP off by default, only Shared Memory/Named Pipes enabled, which the Node driver can't use. Enable it via SQL Server Configuration Manager (or the registry + service restart) and confirm with `netstat -an | findstr 1433`.
-  - **Mixed-mode authentication** enabled (SQL Server + Windows Authentication) if you're using a SQL login rather than Windows Authentication — this also requires a SQL Server service restart to take effect.
+1. Go to [supabase.com](https://supabase.com) and create a new project (free tier, no card required).
+2. Once it's provisioned, open **Project Settings → API** and note:
+   - **Project URL** → `VITE_SUPABASE_URL`
+   - **anon public key** → `VITE_SUPABASE_ANON_KEY`
 
-## 2. Create the database, login, and schema
+## 2. Run the SQL migrations
 
-Using `sqlcmd` (or SSMS) connected as an admin:
+Migrations live in [`supabase/migrations/`](supabase/migrations/) and must be run **in filename order**:
 
-```sql
-CREATE DATABASE TalentFlow;
-GO
+1. `20260721120000_create_candidates_table.sql` — creates the `candidates` table, an `updated_at` trigger, RLS policies, and adds the table to the `supabase_realtime` publication.
+2. `20260721130100_create_resumes_storage_bucket.sql` — creates the public `resumes` Storage bucket (PDF only, 1MB limit) and its access policies.
 
-CREATE LOGIN talentflow_app WITH PASSWORD = 'choose-a-strong-password', CHECK_POLICY = ON;
-GO
+**Option A — Supabase Dashboard**: open your project → **SQL Editor** → **New query** → paste each migration's contents, in order, and click **Run**.
 
-USE TalentFlow;
-CREATE USER talentflow_app FOR LOGIN talentflow_app;
-ALTER ROLE db_datareader ADD MEMBER talentflow_app;
-ALTER ROLE db_datawriter ADD MEMBER talentflow_app;
-ALTER ROLE db_ddladmin ADD MEMBER talentflow_app;
-GO
-```
-
-Then run [`server/db/schema.sql`](server/db/schema.sql) against the `TalentFlow` database — it creates the `candidates` table and the `updated_at` trigger:
-
+**Option B — Supabase CLI**:
 ```bash
-sqlcmd -S localhost,1433 -U talentflow_app -P "your-password" -C -d TalentFlow -i server/db/schema.sql
+supabase link --project-ref <your-project-ref>
+supabase db push
 ```
+
+After running them, confirm in **Database → Replication** that `candidates` is enabled for realtime, and in **Storage** that the `resumes` bucket exists.
 
 ## 3. Configure environment variables
 
-Two separate `.env` files — the server's never gets bundled into the client, so DB credentials can't leak into the browser.
-
-**Frontend** — copy and adjust if needed (defaults match the server's default port):
 ```bash
 cp .env.example .env
 ```
 ```
-VITE_API_BASE_URL=http://localhost:3001
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key
 ```
 
-**Server** — copy and fill in your SQL Server details:
-```bash
-cp server/.env.example server/.env
-```
-```
-DB_SERVER=localhost
-DB_PORT=1433
-DB_NAME=TalentFlow
-DB_USER=talentflow_app
-DB_PASSWORD=your-password
-
-PORT=3001
-CLIENT_ORIGIN=http://localhost:5173
-PUBLIC_API_URL=http://localhost:3001
-```
-
-Both `.env` files are gitignored — never commit real credentials.
+`.env` is gitignored — never commit real credentials.
 
 ## 4. Install dependencies and run locally
 
 ```bash
 npm install
-npm run dev:all
+npm run dev
 ```
 
-`dev:all` runs the Vite dev server (`:5173`) and the Express API (`:3001`) together. To run them separately instead:
-
-```bash
-npm run server   # Express API on :3001
-npm run dev      # Vite dev server on :5173
-```
+The app runs at `http://localhost:5173`. Open it in two browser tabs to see realtime sync — moving or editing a candidate in one tab updates the other instantly.
 
 Other scripts:
 
@@ -105,100 +68,75 @@ npm run lint      # oxlint
 
 ## Deploying to production
 
-This app is set up to deploy across three free-tier services, with `velocityledger.in` pointing at them:
+Just one service to deploy: **Vercel** (or Netlify) for the frontend — Supabase is already hosted. `velocityledger.in` only needs to point at whichever static host you pick.
 
-- **Database**: Azure SQL Database (free tier) — a hosted, wire-compatible SQL Server, so the schema and `mssql` driver code need no changes, just new connection details.
-- **Backend**: Render (free tier) — deploys `server/` from this GitHub repo. Free tier spins down after inactivity, so the first request after idle takes ~30s.
-- **Frontend**: Vercel — deploys the Vite build from this GitHub repo.
-
-### 1. Azure SQL Database
-
-In the [Azure Portal](https://portal.azure.com): **Create a resource → SQL Database**. Choose the free offer, create a new logical server (note the admin login/password you set — this is `DB_USER`/`DB_PASSWORD`), and name the database `TalentFlow`.
-
-Once it's provisioned:
-- **Networking**: under the server's "Networking" blade, add a firewall rule allowing `0.0.0.0`–`255.255.255.255` (Render's free tier has no static outbound IP, so there's no narrower range to allow — this means the SQL Server accepts connections from any IP, protected only by the login password. Fine for a low-stakes internal tool; revisit if that's ever not true).
-- Run [`server/db/schema.sql`](server/db/schema.sql) against it (via the Azure Portal's built-in Query Editor, SSMS, or `sqlcmd -S <server>.database.windows.net -U <admin> -P "<password>" -d TalentFlow -i server/db/schema.sql`).
-- Your connection details: `DB_SERVER=<server-name>.database.windows.net`, `DB_PORT=1433`, `DB_NAME=TalentFlow`, `DB_USER`/`DB_PASSWORD` as set above.
-
-### 2. Push to GitHub
+### 1. Push to GitHub
 
 ```bash
 git remote add origin <your-repo-url>
 git push -u origin master
 ```
 
-### 3. Render (backend)
+### 2. Deploy the frontend
 
-New Web Service → connect the GitHub repo → Render should pick up [`render.yaml`](render.yaml) automatically. Fill in the env vars it leaves blank (`sync: false` in the blueprint): `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (from step 1), `CLIENT_ORIGIN` (`https://velocityledger.in,https://www.velocityledger.in`), and `PUBLIC_API_URL` (`https://api.velocityledger.in`, once the custom domain below is attached — until then, use the `*.onrender.com` URL Render assigns).
+**Vercel**: import the GitHub repo — it'll detect Vite via [`vercel.json`](vercel.json) automatically. Add the two environment variables from step 3 above (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
-Once deployed, add the custom domain `api.velocityledger.in` under the service's Settings → Custom Domains — Render will show you the DNS target to use in step 5.
+**Netlify** works the same way: import the repo, build command `npm run build`, publish directory `dist`, same two env vars.
 
-### 4. Vercel (frontend)
+Once deployed, add `velocityledger.in` (and optionally `www.velocityledger.in`) under the project's domain settings — the host will show you the DNS records to use next.
 
-Import the GitHub repo — Vercel should detect Vite via [`vercel.json`](vercel.json) automatically. Add one environment variable: `VITE_API_BASE_URL=https://api.velocityledger.in`.
+### 3. GoDaddy DNS
 
-Once deployed, add `velocityledger.in` (and optionally `www.velocityledger.in`) under the project's Settings → Domains — Vercel will show you the DNS target to use in step 5.
+In GoDaddy's DNS management for `velocityledger.in`, add the records your host gave you — typically, for Vercel:
 
-### 5. GoDaddy DNS
+| Type  | Name | Value                                  |
+|-------|------|------------------------------------------|
+| A     | @    | Vercel's apex IP (e.g. `76.76.21.21`)     |
+| CNAME | www  | `cname.vercel-dns.com`                     |
 
-In GoDaddy's DNS management for `velocityledger.in`, add the records Render and Vercel gave you in steps 3–4 — typically:
+(Netlify's equivalents are shown in its own domain settings page.)
 
-| Type  | Name  | Value                        |
-|-------|-------|-------------------------------|
-| A     | @     | Vercel's apex IP (e.g. `76.76.21.21`) |
-| CNAME | www   | `cname.vercel-dns.com`         |
-| CNAME | api   | the `.onrender.com` hostname Render gives you |
-
-DNS changes can take anywhere from minutes to a few hours to propagate. Both Render and Vercel issue HTTPS certificates automatically once they see the DNS pointed at them.
+DNS changes can take anywhere from minutes to a few hours to propagate. HTTPS certificates are issued automatically once the host sees the domain pointed at it.
 
 ## Project structure
 
 ```
-server/
-  index.js              # Express app: CORS, JSON body parsing, mounts routes
-  db.js                  # mssql connection pool, reads server/.env
-  db/schema.sql           # candidates table + updated_at trigger
-  db/migrations/           # incremental schema changes applied after schema.sql
-  routes/
-    candidates.js          # GET/POST/PUT/DELETE /api/candidates, resume upload/download
-
 src/
   lib/
-    api.js                # fetch wrapper for the Express API
-    statuses.js            # pipeline stage config (labels, colors)
-    availability.js        # availability select options
-    resumeStorage.js       # client-side resume PDF validation (type + size)
+    supabaseClient.js   # Supabase client, reads env vars
+    statuses.js          # pipeline stage config (labels, colors)
+    availability.js       # availability select options
+    resumeStorage.js      # resume PDF validation + upload to Supabase Storage
   hooks/
-    useCandidates.js       # fetch + polling + CRUD/move actions
+    useCandidates.js     # fetch + realtime subscription + CRUD/move actions
   components/
-    Board.jsx               # DragDropContext + 5 columns
-    Column.jsx                # single column: header, count badge, list, empty state
-    CandidateCard.jsx         # draggable card: expand/collapse, actions menu
-    CandidateForm.jsx         # shared form used by both modals below
+    Board.jsx             # DragDropContext + 5 columns
+    Column.jsx              # single column: header, count badge, list, empty state
+    CandidateCard.jsx       # draggable card: expand/collapse, actions menu
+    CandidateForm.jsx       # shared form used by both modals below
     AddCandidateModal.jsx
     EditCandidateModal.jsx
-    TopBar.jsx                  # logo, total count, auto-refresh indicator, view toggle, settings
-    SearchBar.jsx               # name filter + shown count
-  App.jsx                    # wires the hook up to the UI, loading/error states
+    TopBar.jsx                # logo, total count, live indicator, view toggle, settings
+    SearchBar.jsx             # name filter + shown count
+  App.jsx                  # wires the hook up to the UI, loading/error states
 ```
 
 ## Data model
 
 `candidates` table:
 
-| column          | type          | notes                                                                 |
-|-----------------|---------------|------------------------------------------------------------------------|
-| id              | uniqueidentifier | primary key, `NEWID()`                                               |
-| name            | nvarchar(255) | required                                                                |
-| current_ctc     | decimal(6,2)  | LPA, required                                                           |
-| expected_ctc    | decimal(6,2)  | LPA, required                                                           |
-| experience_yrs  | decimal(4,1)  | required                                                                |
-| availability    | nvarchar(30)  | `immediately` \| `15_days` \| `1_month` \| `2_months` \| `more_than_2_months`, default `immediately` |
-| notes           | nvarchar(max) |                                                                          |
-| resume_filename | nvarchar(255) | original uploaded filename, e.g. `resume.pdf`; `NULL` if none uploaded |
-| resume_data     | varbinary(max)| the PDF bytes                                                           |
-| status          | nvarchar(30)  | `shortlisted` \| `interview_scheduled` \| `interviewed` \| `selected` \| `rejected`, default `shortlisted` |
-| created_at      | datetime2     | default `SYSUTCDATETIME()`                                              |
-| updated_at      | datetime2     | default `SYSUTCDATETIME()`, auto-updated via trigger on every `UPDATE`  |
+| column         | type        | notes                                                                 |
+|----------------|-------------|--------------------------------------------------------------------------|
+| id             | uuid        | primary key, `gen_random_uuid()`                                         |
+| name           | text        | required                                                                  |
+| current_ctc    | numeric(6,2)| LPA, required                                                             |
+| expected_ctc   | numeric(6,2)| LPA, required                                                             |
+| experience_yrs | numeric(4,1)| required                                                                  |
+| availability   | text        | `immediately` \| `15_days` \| `1_month` \| `2_months` \| `more_than_2_months`, default `immediately` |
+| notes          | text        |                                                                            |
+| resume_url     | text        | public URL of the uploaded PDF in the `resumes` Storage bucket           |
+| status         | text        | `shortlisted` \| `interview_scheduled` \| `interviewed` \| `selected` \| `rejected`, default `shortlisted` |
+| created_at     | timestamptz | default `now()`                                                           |
+| updated_at     | timestamptz | default `now()`, auto-updated via trigger on every `UPDATE`               |
 
-Resumes are stored in the row itself (`resume_data`), not on disk — deliberately, since several free-tier hosts (e.g. Render) wipe local disk on every restart/redeploy, and storing the PDF alongside the rest of the candidate's data means it persists exactly as reliably as everything else, with no separate file store to provision. The API never includes `resume_data` in list/detail JSON responses (it'd bloat every request); instead each candidate gets a computed `resume_url` pointing at `GET /api/candidates/:id/resume`, which streams the blob back with the right `Content-Type`/`Content-Disposition`. Uploading goes through `PUT /api/candidates/:id/resume` (multipart, one `resume` field, PDF only, 1MB limit enforced both client- and server-side) — which is why on the "Add" flow the candidate is created first (to get an id), then the resume is attached as a second call.
+`resumes` Storage bucket: public, PDF only, 1MB file size limit. Resumes are uploaded under a random UUID filename (not tied to the candidate row), and `resume_url` stores the resulting public URL.
