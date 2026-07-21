@@ -68,33 +68,25 @@ npm run lint      # oxlint
 
 ## Deploying to production
 
-Just one service to deploy: **Vercel** (or Netlify) for the frontend — Supabase is already hosted. `velocityledger.in` only needs to point at whichever static host you pick.
+Just one service to deploy: **Vercel** (or Netlify) for the frontend — Supabase is already hosted. Source: [github.com/shruti3251/Talent-Tracker](https://github.com/shruti3251/Talent-Tracker), deploying to **`talent.velocityledger.in`** (a subdomain — the apex `velocityledger.in` is left free for other use).
 
-### 1. Push to GitHub
-
-```bash
-git remote add origin <your-repo-url>
-git push -u origin master
-```
-
-### 2. Deploy the frontend
+### 1. Deploy the frontend
 
 **Vercel**: import the GitHub repo — it'll detect Vite via [`vercel.json`](vercel.json) automatically. Add the two environment variables from step 3 above (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
 **Netlify** works the same way: import the repo, build command `npm run build`, publish directory `dist`, same two env vars.
 
-Once deployed, add `velocityledger.in` (and optionally `www.velocityledger.in`) under the project's domain settings — the host will show you the DNS records to use next.
+Once deployed, add `talent.velocityledger.in` under the project's domain settings — the host will show you the DNS record to use next.
 
-### 3. GoDaddy DNS
+### 2. GoDaddy DNS
 
-In GoDaddy's DNS management for `velocityledger.in`, add the records your host gave you — typically, for Vercel:
+In GoDaddy's DNS management for `velocityledger.in`, add a single CNAME record for the `talent` subdomain, pointing at whatever host your provider gave you — for Vercel:
 
-| Type  | Name | Value                                  |
-|-------|------|------------------------------------------|
-| A     | @    | Vercel's apex IP (e.g. `76.76.21.21`)     |
-| CNAME | www  | `cname.vercel-dns.com`                     |
+| Type  | Name  | Value                |
+|-------|-------|------------------------|
+| CNAME | talent | `cname.vercel-dns.com` |
 
-(Netlify's equivalents are shown in its own domain settings page.)
+(Netlify's equivalent CNAME target is shown on its own domain settings page.)
 
 DNS changes can take anywhere from minutes to a few hours to propagate. HTTPS certificates are issued automatically once the host sees the domain pointed at it.
 
