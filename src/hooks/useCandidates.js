@@ -4,6 +4,7 @@ import {
   deleteCandidate as apiDeleteCandidate,
   fetchCandidates,
   updateCandidate as apiUpdateCandidate,
+  uploadCandidateResume,
 } from '../lib/api'
 import { DEFAULT_STATUS } from '../lib/statuses'
 
@@ -75,6 +76,17 @@ export function useCandidates() {
     [updateCandidate],
   )
 
+  const uploadResume = useCallback(async (id, file) => {
+    try {
+      const updated = await uploadCandidateResume(id, file)
+      setCandidates((prev) => prev.map((c) => (c.id === id ? updated : c)))
+      return updated
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }, [])
+
   const deleteCandidate = useCallback(async (id) => {
     let previous
     let previousIndex = -1
@@ -108,6 +120,7 @@ export function useCandidates() {
     addCandidate,
     updateCandidate,
     moveCandidate,
+    uploadResume,
     deleteCandidate,
   }
 }

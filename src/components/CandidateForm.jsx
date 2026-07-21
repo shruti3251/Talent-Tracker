@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { FileText, UploadCloud, UserRound, X } from 'lucide-react'
 import { AVAILABILITY_OPTIONS } from '../lib/availability'
-import { uploadResume, validateResumeFile } from '../lib/resumeStorage'
+import { validateResumeFile } from '../lib/resumeStorage'
 
 const EMPTY_FORM = {
   name: '',
@@ -98,7 +98,7 @@ function ResumeDropzone({ existingUrl, file, onFileSelected, onClear, error }) {
   )
 }
 
-export default function CandidateForm({ verb, initialValues, submitLabel, onSubmit, onClose }) {
+export default function CandidateForm({ verb, initialValues, submitLabel, onSubmit, onUploadResume, onClose }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initialValues })
   const [resumeFile, setResumeFile] = useState(null)
   const [resumeError, setResumeError] = useState(null)
@@ -128,19 +128,17 @@ export default function CandidateForm({ verb, initialValues, submitLabel, onSubm
     setSubmitting(true)
     setError(null)
     try {
-      let resume_url = form.resume_url || null
-      if (resumeFile) {
-        resume_url = await uploadResume(resumeFile)
-      }
-      await onSubmit({
+      const saved = await onSubmit({
         name: form.name,
         current_ctc: Number(form.current_ctc),
         expected_ctc: Number(form.expected_ctc),
         experience_yrs: Number(form.experience_yrs),
         availability: form.availability,
         notes: form.notes,
-        resume_url,
       })
+      if (resumeFile) {
+        await onUploadResume(saved.id, resumeFile)
+      }
       onClose()
     } catch (err) {
       setError(err.message ?? 'Something went wrong.')

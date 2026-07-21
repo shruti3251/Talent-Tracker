@@ -17,6 +17,7 @@ function App() {
     addCandidate,
     updateCandidate,
     moveCandidate,
+    uploadResume,
     deleteCandidate,
   } = useCandidates()
 
@@ -95,13 +96,18 @@ function App() {
       )}
 
       {addOpen && (
-        <AddCandidateModal onAdd={addCandidate} onClose={() => setAddOpen(false)} />
+        <AddCandidateModal
+          onAdd={addCandidate}
+          onUploadResume={uploadResume}
+          onClose={() => setAddOpen(false)}
+        />
       )}
 
       {editingCandidate && (
         <EditCandidateModal
           candidate={editingCandidate}
           onSave={updateCandidate}
+          onUploadResume={uploadResume}
           onClose={() => setEditingCandidate(null)}
         />
       )}

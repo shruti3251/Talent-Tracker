@@ -11,7 +11,8 @@ BEGIN
     availability    NVARCHAR(30) NOT NULL DEFAULT 'immediately'
       CHECK (availability IN ('immediately', '15_days', '1_month', '2_months', 'more_than_2_months')),
     notes           NVARCHAR(MAX) NULL,
-    resume_url      NVARCHAR(500) NULL,
+    resume_filename NVARCHAR(255) NULL,
+    resume_data     VARBINARY(MAX) NULL,
     status          NVARCHAR(30) NOT NULL DEFAULT 'shortlisted'
       CHECK (status IN ('shortlisted', 'interview_scheduled', 'interviewed', 'selected', 'rejected')),
     created_at      DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),

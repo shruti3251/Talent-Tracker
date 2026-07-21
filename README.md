@@ -8,7 +8,7 @@ A Kanban-style board for tracking job candidates through a hiring pipeline: **Sh
 - Tailwind CSS v4
 - Express + `mssql` (backend API, talks to SQL Server)
 - Microsoft SQL Server (data)
-- `multer` for resume PDF uploads (stored on local disk, served by Express)
+- `multer` for resume PDF uploads (stored as a blob in SQL Server, streamed back by Express — see below)
 - `@hello-pangea/dnd` for drag-and-drop between columns
 
 ## Why there's a separate server
@@ -76,7 +76,6 @@ DB_PASSWORD=your-password
 
 PORT=3001
 CLIENT_ORIGIN=http://localhost:5173
-UPLOAD_DIR=uploads
 PUBLIC_API_URL=http://localhost:3001
 ```
 
@@ -108,20 +107,19 @@ npm run lint      # oxlint
 
 ```
 server/
-  index.js              # Express app: CORS, JSON body parsing, static /uploads, mounts routes
+  index.js              # Express app: CORS, JSON body parsing, mounts routes
   db.js                  # mssql connection pool, reads server/.env
   db/schema.sql           # candidates table + updated_at trigger
+  db/migrations/           # incremental schema changes applied after schema.sql
   routes/
-    candidates.js          # GET/POST/PUT/DELETE /api/candidates
-    resumes.js              # POST /api/resumes — multipart PDF upload (multer)
-  uploads/                # uploaded resume PDFs live here (gitignored)
+    candidates.js          # GET/POST/PUT/DELETE /api/candidates, resume upload/download
 
 src/
   lib/
     api.js                # fetch wrapper for the Express API
     statuses.js            # pipeline stage config (labels, colors)
     availability.js        # availability select options
-    resumeStorage.js       # resume PDF validation + upload via api.js
+    resumeStorage.js       # client-side resume PDF validation (type + size)
   hooks/
     useCandidates.js       # fetch + polling + CRUD/move actions
   components/
@@ -149,9 +147,10 @@ src/
 | experience_yrs  | decimal(4,1)  | required                                                                |
 | availability    | nvarchar(30)  | `immediately` \| `15_days` \| `1_month` \| `2_months` \| `more_than_2_months`, default `immediately` |
 | notes           | nvarchar(max) |                                                                          |
-| resume_url      | nvarchar(500) | absolute URL served by the Express API, e.g. `http://localhost:3001/uploads/<uuid>.pdf` |
+| resume_filename | nvarchar(255) | original uploaded filename, e.g. `resume.pdf`; `NULL` if none uploaded |
+| resume_data     | varbinary(max)| the PDF bytes                                                           |
 | status          | nvarchar(30)  | `shortlisted` \| `interview_scheduled` \| `interviewed` \| `selected` \| `rejected`, default `shortlisted` |
 | created_at      | datetime2     | default `SYSUTCDATETIME()`                                              |
 | updated_at      | datetime2     | default `SYSUTCDATETIME()`, auto-updated via trigger on every `UPDATE`  |
 
-Resumes are saved to `server/uploads/<uuid>.pdf` (PDF only, 1MB limit, enforced both client-side and server-side) and served back as static files by Express.
+Resumes are stored in the row itself (`resume_data`), not on disk — deliberately, since several free-tier hosts (e.g. Render) wipe local disk on every restart/redeploy, and storing the PDF alongside the rest of the candidate's data means it persists exactly as reliably as everything else, with no separate file store to provision. The API never includes `resume_data` in list/detail JSON responses (it'd bloat every request); instead each candidate gets a computed `resume_url` pointing at `GET /api/candidates/:id/resume`, which streams the blob back with the right `Content-Type`/`Content-Disposition`. Uploading goes through `PUT /api/candidates/:id/resume` (multipart, one `resume` field, PDF only, 1MB limit enforced both client- and server-side) — which is why on the "Add" flow the candidate is created first (to get an id), then the resume is attached as a second call.

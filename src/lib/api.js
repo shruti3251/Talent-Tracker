@@ -31,9 +31,8 @@ export function deleteCandidate(id) {
   return request(`/api/candidates/${id}`, { method: 'DELETE' })
 }
 
-export async function uploadResumeFile(file) {
+export function uploadCandidateResume(id, file) {
   const formData = new FormData()
   formData.append('resume', file)
-  const { url } = await request('/api/resumes', { method: 'POST', body: formData })
-  return url
+  return request(`/api/candidates/${id}/resume`, { method: 'PUT', body: formData })
 }

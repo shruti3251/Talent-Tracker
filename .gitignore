@@ -17,10 +17,6 @@ dist-ssr
 .env.*
 !.env.example
 
-# Locally uploaded resumes (server)
-server/uploads/*
-!server/uploads/.gitkeep
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
