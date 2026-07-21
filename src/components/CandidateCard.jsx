@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Draggable } from '@hello-pangea/dnd'
 import {
   ArrowRightLeft,
@@ -31,6 +31,12 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
   const [expanded, setExpanded] = useState(!compact)
   const [menuOpen, setMenuOpen] = useState(false)
   const [moveMenuOpen, setMoveMenuOpen] = useState(false)
+
+  // Switching the board's Expanded/Compact toggle should reset every card to
+  // that mode's default state; individual cards can still be toggled after.
+  useEffect(() => {
+    setExpanded(!compact)
+  }, [compact])
 
   const status = STATUS_MAP[candidate.status]
   const showDetails = expanded
