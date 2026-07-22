@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LayoutGrid, List, Plus, Settings, Users } from 'lucide-react'
+import { Plus, Settings, Users } from 'lucide-react'
 import { STATUSES } from '../lib/statuses'
 
 export default function TopBar({
@@ -36,34 +36,36 @@ export default function TopBar({
             {isLive ? 'Live' : 'Connecting…'}
           </span>
 
-          <div className="flex items-center rounded-lg border border-slate-200 p-0.5">
-            <button
-              type="button"
-              onClick={() => onViewModeChange('expanded')}
-              title="Expanded view"
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                viewMode === 'expanded'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={viewMode === 'compact'}
+            onClick={() => onViewModeChange(viewMode === 'expanded' ? 'compact' : 'expanded')}
+            title={`Switch to ${viewMode === 'expanded' ? 'Compact' : 'Expanded'} view`}
+            className="flex items-center gap-2"
+          >
+            <span
+              className={`text-sm font-medium ${viewMode === 'expanded' ? 'text-slate-900' : 'text-slate-400'}`}
             >
-              <LayoutGrid className="size-4" />
               Expanded
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewModeChange('compact')}
-              title="Compact view"
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                viewMode === 'compact'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+            </span>
+            <span
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                viewMode === 'compact' ? 'bg-indigo-600' : 'bg-slate-300'
               }`}
             >
-              <List className="size-4" />
+              <span
+                className={`inline-block size-4 transform rounded-full bg-white shadow transition-transform ${
+                  viewMode === 'compact' ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </span>
+            <span
+              className={`text-sm font-medium ${viewMode === 'compact' ? 'text-slate-900' : 'text-slate-400'}`}
+            >
               Compact
-            </button>
-          </div>
+            </span>
+          </button>
 
           <button
             type="button"
