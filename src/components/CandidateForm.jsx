@@ -52,6 +52,25 @@ function ResumeDropzone({ existingUrl, file, onFileSelected, onClear, error }) {
             <X className="size-4" />
           </button>
         </div>
+      ) : existingUrl ? (
+        <div className="flex items-center justify-between rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm">
+          <a
+            href={existingUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 text-indigo-600 hover:underline"
+          >
+            <FileText className="size-4" />
+            View current resume
+          </a>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="text-xs font-medium text-slate-500 hover:text-slate-700"
+          >
+            Replace
+          </button>
+        </div>
       ) : (
         <div
           onDragOver={(e) => {
@@ -71,17 +90,6 @@ function ResumeDropzone({ existingUrl, file, onFileSelected, onClear, error }) {
         >
           <UploadCloud className="size-6 text-slate-400" />
           <p className="text-xs font-medium text-slate-600">Drag & drop PDF or click to browse</p>
-          {existingUrl && !file && (
-            <a
-              href={existingUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-xs text-indigo-600 hover:underline"
-            >
-              View current resume
-            </a>
-          )}
         </div>
       )}
 
