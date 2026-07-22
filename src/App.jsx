@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, Loader2, X } from 'lucide-react'
 import { useCandidates } from './hooks/useCandidates'
+import { useDarkMode } from './hooks/useDarkMode'
 import TopBar from './components/TopBar'
 import SearchBar from './components/SearchBar'
 import Board from './components/Board'
@@ -20,6 +21,7 @@ function App() {
     deleteCandidate,
   } = useCandidates()
 
+  const [darkMode, setDarkMode] = useDarkMode()
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState('expanded')
   const [addOpen, setAddOpen] = useState(false)
@@ -59,6 +61,8 @@ function App() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onAddClick={() => setAddOpen(true)}
+        darkMode={darkMode}
+        onDarkModeChange={setDarkMode}
       />
 
       <SearchBar
@@ -69,7 +73,7 @@ function App() {
       />
 
       {error && (
-        <div className="flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-6 py-2.5 text-sm text-red-700">
+        <div className="flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-6 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           <span className="flex items-center gap-2">
             <AlertTriangle className="size-4 shrink-0" />
             {error}
@@ -81,7 +85,7 @@ function App() {
       )}
 
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-slate-400">
+        <div className="flex flex-1 items-center justify-center text-slate-400 dark:text-slate-600">
           <Loader2 className="size-8 animate-spin" />
         </div>
       ) : (

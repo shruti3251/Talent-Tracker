@@ -53,15 +53,15 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`group rounded-lg border-l-4 ${status?.border ?? 'border-slate-300'} border border-slate-200 bg-white shadow-sm ${
-            snapshot.isDragging ? 'ring-2 ring-indigo-300 shadow-lg' : ''
+          className={`group rounded-lg border-l-4 ${status?.border ?? 'border-slate-300'} border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800 ${
+            snapshot.isDragging ? 'ring-2 ring-indigo-300 shadow-lg dark:ring-indigo-700' : ''
           }`}
         >
           <div className="flex items-center gap-1 px-3 py-2.5">
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="flex size-5 shrink-0 items-center justify-center text-slate-400 hover:text-slate-600"
+              className="flex size-5 shrink-0 items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               aria-label={expanded ? 'Collapse' : 'Expand'}
             >
               {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
@@ -70,7 +70,7 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="flex-1 truncate text-left text-sm font-bold uppercase tracking-wide text-slate-800"
+              className="flex-1 truncate text-left text-sm font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100"
             >
               {candidate.name}
             </button>
@@ -79,7 +79,7 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className="flex size-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="flex size-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
                 aria-label="Candidate actions"
               >
                 <MoreVertical className="size-4" />
@@ -88,14 +88,14 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
               {menuOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={closeMenus} />
-                  <div className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-800">
                     <button
                       type="button"
                       onClick={() => {
                         closeMenus()
                         onEdit(candidate)
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                       <Pencil className="size-3.5" /> Edit
                     </button>
@@ -103,12 +103,12 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
                     <button
                       type="button"
                       onClick={() => setMoveMenuOpen((v) => !v)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                       <ArrowRightLeft className="size-3.5" /> Move to stage
                     </button>
                     {moveMenuOpen && (
-                      <div className="border-t border-slate-100 py-1">
+                      <div className="border-t border-slate-100 py-1 dark:border-slate-700">
                         {STATUSES.filter((s) => s.key !== candidate.status).map((s) => (
                           <button
                             key={s.key}
@@ -117,7 +117,7 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
                               closeMenus()
                               onMove(candidate.id, s.key)
                             }}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 pl-8 text-sm text-slate-600 hover:bg-slate-50"
+                            className="flex w-full items-center gap-2 px-3 py-1.5 pl-8 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
                           >
                             <span className={`size-2 rounded-full ${s.dot}`} />
                             {s.label}
@@ -132,7 +132,7 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
                         closeMenus()
                         onDelete(candidate)
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
                     >
                       <Trash2 className="size-3.5" /> Delete
                     </button>
@@ -143,7 +143,7 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
           </div>
 
           {showDetails && (
-            <div className="space-y-1.5 border-t border-slate-100 px-3 py-2.5 text-xs text-slate-600">
+            <div className="space-y-1.5 border-t border-slate-100 px-3 py-2.5 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
               {(candidate.current_ctc != null || candidate.expected_ctc != null) && (
                 <div className="flex items-center gap-2">
                   <IndianRupee className="size-3.5 shrink-0 text-slate-400" />
@@ -174,7 +174,7 @@ export default function CandidateCard({ candidate, index, viewMode, onEdit, onDe
                   href={candidate.resume_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 text-indigo-600 hover:underline"
+                  className="flex items-center gap-2 text-indigo-600 hover:underline dark:text-indigo-400"
                 >
                   <FileText className="size-3.5 shrink-0" /> View resume
                 </a>
