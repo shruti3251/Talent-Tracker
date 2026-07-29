@@ -211,7 +211,7 @@ export default function CandidateForm({ verb, initialValues, submitLabel, onSubm
                 required
                 type="number"
                 min="0"
-                step="0.1"
+                step="0.01"
                 placeholder="e.g. 8.5"
                 value={form.current_ctc}
                 onChange={handleChange('current_ctc')}
@@ -223,7 +223,7 @@ export default function CandidateForm({ verb, initialValues, submitLabel, onSubm
                 required
                 type="number"
                 min="0"
-                step="0.1"
+                step="0.01"
                 placeholder="e.g. 12"
                 value={form.expected_ctc}
                 onChange={handleChange('expected_ctc')}
