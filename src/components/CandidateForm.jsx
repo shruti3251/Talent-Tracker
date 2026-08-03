@@ -8,7 +8,7 @@ const EMPTY_FORM = {
   current_ctc: '',
   expected_ctc: '',
   experience_yrs: '',
-  availability: AVAILABILITY_OPTIONS[0].value,
+  availability: '',
   notes: '',
   resume_url: '',
 }
@@ -142,7 +142,8 @@ export default function CandidateForm({ verb, initialValues, submitLabel, onSubm
       !form.name.trim() ||
       isBlank(form.current_ctc) ||
       isBlank(form.expected_ctc) ||
-      isBlank(form.experience_yrs)
+      isBlank(form.experience_yrs) ||
+      isBlank(form.availability)
     ) {
       setError('Please fill in all required fields.')
       return
@@ -245,8 +246,16 @@ export default function CandidateForm({ verb, initialValues, submitLabel, onSubm
                 className={inputClass}
               />
             </Field>
-            <Field label="Availability">
-              <select value={form.availability} onChange={handleChange('availability')} className={inputClass}>
+            <Field label="Availability" required>
+              <select
+                required
+                value={form.availability}
+                onChange={handleChange('availability')}
+                className={inputClass}
+              >
+                <option value="" disabled>
+                  Select availability
+                </option>
                 {AVAILABILITY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
