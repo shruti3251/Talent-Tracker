@@ -39,7 +39,7 @@ function ResumeDropzone({ existingUrl, file, onFileSelected, onClear, error }) {
   return (
     <div>
       <span className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-        Resume (PDF only, max 1MB)
+        Resume (PDF or Word, max 1MB)
       </span>
 
       {file ? (
@@ -96,7 +96,7 @@ function ResumeDropzone({ existingUrl, file, onFileSelected, onClear, error }) {
         >
           <UploadCloud className="size-6 text-slate-400" />
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-            Drag & drop PDF or click to browse
+            Drag & drop PDF or Word file, or click to browse
           </p>
         </div>
       )}
@@ -104,7 +104,7 @@ function ResumeDropzone({ existingUrl, file, onFileSelected, onClear, error }) {
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf"
+        accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
